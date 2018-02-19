@@ -1,0 +1,101 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+
+
+## Loading and preprocessing the data
+```{r}
+library(ggplot2)
+library(knitr)
+library(magrittr)
+library(kableExtra)
+library(chron)
+rawdata <- read.csv("./activity/activity.csv")
+activities <- na.omit(rawdata)
+```
+
+## What is the total number of steps taken per day?
+
+```{r}
+totalSteps <- aggregate(activities$steps, by=list(date=activities$date), FUN=sum)
+colnames(totalSteps) <- c("Date", "Steps")
+ggplot(totalSteps, aes(x=Steps)) + geom_histogram(binwidth = 1000, fill = "blue", colour = "grey60", size=0.2) + labs(title=expression("Total number of steps taken each day"))
+```   
+   
+__The mean of total number of steps per day__
+```{r}
+meanTotalStepsPerDay <- aggregate(activities$steps, by=list(date=activities$date), FUN=mean)
+kable(meanTotalStepsPerDay, "html") %>% 
+    kable_styling(bootstrap_options = "striped", full_width = F, position = "left") %>%
+    scroll_box(width = "500px", height = "200px")
+```   
+   
+__The median of total number of steps per day__
+```{r}
+medianTotalStepsPerDay <- aggregate(activities$steps, by=list(date=activities$date), FUN=median)
+kable(meanTotalStepsPerDay, "html") %>% 
+    kable_styling(bootstrap_options = "striped", full_width = F, position = "left") %>%
+    scroll_box(width = "500px", height = "200px")
+```
+
+## What is the average daily activity pattern?
+```{r}
+intervalStepsAllDays <- aggregate(activities$steps, list(activities$interval), mean)
+colnames(intervalStepsAllDays) <- c("Interval", "Steps")
+ggplot(intervalStepsAllDays, aes(Interval, Steps)) + geom_line() +
+    labs(title=expression("Steps of Each 5-minute Intervals Across All Days"))
+```
+   
+__The 5-minute interval with the Maximal steps on average__ 
+```{r}
+maxSteps <- intervalStepsAllDays[which.max(intervalStepsAllDays$Steps), ]
+kable(maxSteps, "html") %>% 
+    kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
+```
+
+## Imputing missing values
+```{r}
+totalNAs <- sum(is.na(rawdata$steps))
+```
+__The total number of NAs is: `r totalNAs`__            
+__Since the median value steps of all days are 0, I'll just replace the NAs by 0.__
+```{r}
+NAfilledData <- rawdata
+NAfilledData$steps[is.na(NAfilledData$steps)] <- 0
+
+imputedTotalSteps <- aggregate(NAfilledData$steps, by=list(date=NAfilledData$date), FUN=sum)
+colnames(imputedTotalSteps) <- c("Date", "Steps")
+ggplot(imputedTotalSteps, aes(x=Steps)) + geom_histogram(binwidth = 1000, fill = "green", colour = "black", size=0.2) + labs(title=expression("Total number of steps taken each day(Imputed data)"))
+```
+  
+  __With imputed data, the mean of total number of steps per day__
+```{r}
+newMeanStepsPerDay <- aggregate(NAfilledData$steps, by=list(date=NAfilledData$date), FUN=mean)
+kable(newMeanStepsPerDay, "html") %>% 
+    kable_styling(bootstrap_options = "striped", full_width = F, position = "left") %>%
+    scroll_box(width = "500px", height = "200px")
+```   
+  
+__With imputed data, the median of total number of steps per day__
+```{r}
+newMedianStepsPerDay <- aggregate(NAfilledData$steps, by=list(date=NAfilledData$date), FUN=median)
+kable(newMedianStepsPerDay, "html") %>% 
+    kable_styling(bootstrap_options = "striped", full_width = F, position = "left") %>%
+    scroll_box(width = "500px", height = "200px")
+```   
+  
+## Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+newData <- NAfilledData
+newData$Days <- ifelse(is.weekend(newData$date),"weekend", "weekday")
+newTotalSteps <- aggregate(newData$steps, list(as.numeric(newData$interval), newData$Days), FUN=mean)
+colnames(newTotalSteps) <- c("Interval", "Day", "Steps")
+
+ggplot(newTotalSteps, aes(Interval, Steps, Day)) + geom_line() + 
+    facet_grid(. ~ Day) +
+    labs(title=expression("Average Steps of 5-minute Intervals"))
+```
